@@ -9,7 +9,7 @@ st.set_page_config(page_title="Sightline Cascade Detection & EKF-CTRA PoC", layo
 st.title("🛡️ Cascaded Detection & EKF-CTRA Target Tracking Engine")
 st.markdown("""
 **Multi-Stage Cascade Architecture & Nonlinear State Estimation**  
-Demonstrates rapid target candidate scanning (YOLO), high-precision ROI refinement (D-FINE), and continuous EKF-CTRA trajectory propagation overlaid on interactive geospatial maps[cite: 1, 5, 6].
+Demonstrates rapid target candidate scanning (YOLO), high-precision ROI refinement (D-FINE), and continuous EKF-CTRA trajectory propagation overlaid on interactive geospatial maps.
 """)
 
 # --- EKF WITH CONSTANT TURN-RATE & ACCELERATION (CTRA) MODEL ---
@@ -27,7 +27,7 @@ class EKFCTRA:
     def predict(self, dt=0.033):
         px, py, v, theta, omega, a = self.x
         
-        # Kinematic state transition under CTRA model[cite: 6, 7]
+        # Kinematic state transition under CTRA model
         if abs(omega) > 1e-5:
             dx = (v / omega) * (np.sin(theta + omega * dt) - np.sin(theta))
             dy = (v / omega) * (-np.cos(theta + omega * dt) + np.cos(theta))
@@ -59,7 +59,7 @@ class EKFCTRA:
 
 # --- SIDEBAR CONTROLS ---
 st.sidebar.markdown("### 🎛️ Pipeline Configuration")
-cascade_mode = st.sidebar.selectbox("Detection Strategy", ["Full Cascade (YOLO -> D-FINE -> EKF-CTRA)", "YOLO Baseline Only", "RF-DETR Context Mode"])[cite: 1, 5]
+cascade_mode = st.sidebar.selectbox("Detection Strategy", ["Full Cascade (YOLO -> D-FINE -> EKF-CTRA)", "YOLO Baseline Only", "RF-DETR Context Mode"])
 target_type = st.sidebar.selectbox("Target Class", ["Moving Vehicle (SUV)", "High-Dynamic UAV", "Personnel"])
 platform_alt = st.sidebar.slider("Platform Altitude (m AGL)", 100.0, 1500.0, 700.0, 50.0)
 slant_range = st.sidebar.slider("Slant Range (m)", 200.0, 3000.0, 1000.0, 50.0)
@@ -82,14 +82,14 @@ trajectory_data = []
 for i in range(sim_steps):
     pred_state = st.session_state.tracker.predict(dt=0.033)
     
-    # Stage 1: Fast Scan Bounding Box (YOLO)[cite: 5]
+    # Stage 1: Fast Scan Bounding Box (YOLO)
     meas_x = pred_state[0] + np.random.normal(0, 0.4)
     meas_y = pred_state[1] + np.random.normal(0, 0.4)
     
     # Stage 2: ROI Bounding Box Refinement (D-FINE Distance-aware alignment)
     refined_meas = np.array([meas_x * 0.98, meas_y * 0.98])
     
-    # Stage 3: EKF State Update[cite: 6]
+    # Stage 3: EKF State Update
     updated_state = st.session_state.tracker.update(refined_meas)
     
     # Convert meters offset to geodetic coords
@@ -109,9 +109,9 @@ with col_left:
     
     st.markdown("""
     **Cascade Execution Breakdown:**
-    1. **Stage 1 (YOLOv11-Nano):** 1.2ms initial full-frame candidate extraction[cite: 5].
-    2. **Stage 2 (D-FINE Refiner):** 2.1ms ROI tight-bounding box distance alignment[cite: 3, 5].
-    3. **State Estimator (EKF-CTRA):** 0.9ms state prediction & covariance update[cite: 6, 7].
+    1. **Stage 1 (YOLOv11-Nano):** 1.2ms initial full-frame candidate extraction.
+    2. **Stage 2 (D-FINE Refiner):** 2.1ms ROI tight-bounding box distance alignment.
+    3. **State Estimator (EKF-CTRA):** 0.9ms state prediction & covariance update.
     """)
 
 with col_right:
