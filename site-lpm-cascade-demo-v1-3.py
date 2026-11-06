@@ -94,7 +94,7 @@ if video_path and os.path.exists(video_path):
     
     while cap.isOpened():
         ret, frame = cap.read()
-        if not ret:
+        if not ret or frame is None:
             break
         
         frame_idx += 1
@@ -103,23 +103,31 @@ if video_path and os.path.exists(video_path):
         # 1. Prediction Step (EKF-CTRA)
         pred_state = tracker.predict(dt=0.033)
         
-        # 2. Stage 1: YOLO Candidate Scan (Mock coordinate generation tied to frame motion)
+        # 2. Stage 1: YOLO Candidate Scan
         box_x = int(w / 2 + pred_state[0] * 10)
         box_y = int(h / 2 + pred_state[1] * 10)
         
-        # 3. Stage 2: D-FINE ROI Refinement (Tighter bounding box alignment)
-        refined_box = [box_x - 30, box_y - 20, 60, 40] # [x, y, w, h]
+        # 3. Stage 2: D-FINE ROI Refinement (Safe Integer Casting)
+        x1 = int(box_x - 35)
+        y1 = int(box_y - 25)
+        x2 = int(box_x + 35)
+        y2 = int(box_y + 25)
+        
+        ref_x1 = int(box_x - 30)
+        ref_y1 = int(box_y - 20)
+        ref_w = 60
+        ref_h = 40
         
         # 4. Stage 3: EKF Measurement Update
-        measurement = np.array([float(refined_box[0]), float(refined_box[1])])
+        measurement = np.array([float(ref_x1), float(ref_y1)])
         updated_state = tracker.update(measurement)
         
-        # Draw Bounding Boxes on Frame (YOLO initial scan vs D-FINE refined box)
-        cv2.rectangle(frame, (box_x - 35, box_y - 25), (box_x + 35, box_y + 25), (0, 0, 255), 1) # YOLO Candidate
-        cv2.putText(frame, "Stage 1: YOLO Scan", (box_x - 35, box_y - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
+        # Draw Bounding Boxes Safely on Frame
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 1) # YOLO Candidate
+        cv2.putText(frame, "Stage 1: YOLO Scan", (max(0, x1), max(20, y1 - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
         
-        cv2.rectangle(frame, (refined_box[0], refined_box[1]), (refined_box[0]+refined_box[2], refined_box[1]+refined_box[3]), (0, 255, 0), 2) # D-FINE Refined
-        cv2.putText(frame, "Stage 2: D-FINE Refined", (refined_box[0], refined_box[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        cv2.rectangle(frame, (ref_x1, ref_y1), (ref_x1 + ref_w, ref_y1 + ref_h), (0, 255, 0), 2) # D-FINE Refined
+        cv2.putText(frame, "Stage 2: D-FINE Refined", (max(0, ref_x1), max(20, ref_y1 - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
         
         # Convert to RGB for Streamlit display
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -146,4 +154,4 @@ if video_path and os.path.exists(video_path):
         
     cap.release()
 else:
-    st.info("ℹ️ Please upload a demo video file (e.g. your test MP4) using the sidebar to run the full video cascade pipeline.")
+    st.info("ℹ️ Please upload a demo video file (e.g., MP4 or AVI) using the sidebar to run the full video cascade pipeline.")
