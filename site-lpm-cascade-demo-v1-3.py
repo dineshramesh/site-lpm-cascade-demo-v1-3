@@ -57,6 +57,18 @@ class EKFCTRA:
         self.P = (np.eye(6) - K @ H) @ self.P
         return self.x
 
+# Safe OpenCV Drawing Helper (Clamps coordinates to frame bounds)
+def safe_draw_rect(img, box, color, thickness=1):
+    h, w = img.shape[:2]
+    x1, y1, x2, y2 = box
+    x1 = max(0, min(w - 1, int(x1)))
+    y1 = max(0, min(h - 1, int(y1)))
+    x2 = max(0, min(w - 1, int(x2)))
+    y2 = max(0, min(h - 1, int(y2)))
+    if x2 > x1 and y2 > y1:
+        cv2.rectangle(img, (x1, y1), (x2, y2), color, thickness)
+    return x1, y1
+
 # --- SIDEBAR CONTROLS ---
 st.sidebar.markdown("### 🎛️ Video & Pipeline Configuration")
 uploaded_video = st.sidebar.file_uploader("Upload Demo Video File (MP4, AVI)", type=["mp4", "avi", "mov"])
@@ -107,27 +119,20 @@ if video_path and os.path.exists(video_path):
         box_x = int(w / 2 + pred_state[0] * 10)
         box_y = int(h / 2 + pred_state[1] * 10)
         
-        # 3. Stage 2: D-FINE ROI Refinement (Safe Integer Casting)
-        x1 = int(box_x - 35)
-        y1 = int(box_y - 25)
-        x2 = int(box_x + 35)
-        y2 = int(box_y + 25)
-        
-        ref_x1 = int(box_x - 30)
-        ref_y1 = int(box_y - 20)
-        ref_w = 60
-        ref_h = 40
+        # 3. Stage 2: D-FINE ROI Refinement Box Coordinates
+        x1, y1, x2, y2 = box_x - 35, box_y - 25, box_x + 35, box_y + 25
+        ref_x1, ref_y1, ref_x2, ref_y2 = box_x - 30, box_y - 20, box_x + 30, box_y + 20
         
         # 4. Stage 3: EKF Measurement Update
         measurement = np.array([float(ref_x1), float(ref_y1)])
         updated_state = tracker.update(measurement)
         
-        # Draw Bounding Boxes Safely on Frame
-        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 1) # YOLO Candidate
-        cv2.putText(frame, "Stage 1: YOLO Scan", (max(0, x1), max(20, y1 - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
+        # Draw Bounding Boxes Safely with Boundary Clamping
+        bx1, by1 = safe_draw_rect(frame, (x1, y1, x2, y2), (0, 0, 255), 1) # YOLO Candidate
+        cv2.putText(frame, "Stage 1: YOLO Scan", (bx1, max(15, by1 - 5)), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
         
-        cv2.rectangle(frame, (ref_x1, ref_y1), (ref_x1 + ref_w, ref_y1 + ref_h), (0, 255, 0), 2) # D-FINE Refined
-        cv2.putText(frame, "Stage 2: D-FINE Refined", (max(0, ref_x1), max(20, ref_y1 - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        rbx1, rby1 = safe_draw_rect(frame, (ref_x1, ref_y1, ref_x2, ref_y2), (0, 255, 0), 2) # D-FINE Refined
+        cv2.putText(frame, "Stage 2: D-FINE Refined", (rbx1, max(15, rby1 - 5)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
         
         # Convert to RGB for Streamlit display
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
