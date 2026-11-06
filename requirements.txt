@@ -4,4 +4,4 @@ matplotlib>=3.5.0
 pandas>=1.4.0
 openpyxl>=3.0.0
 pydeck>=0.8.0
-opencv-python>=4.8.0
+opencv-python-headless>=4.8.0
